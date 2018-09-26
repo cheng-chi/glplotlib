@@ -11,6 +11,8 @@ setup(
     include_package_data=True,
     install_requires=[
         "numpy",
+        "pyopengl",
+        "pyqt5==5.10.1",
         "pyqtgraph"
     ]
 )
