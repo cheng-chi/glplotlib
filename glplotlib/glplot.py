@@ -135,7 +135,7 @@ class GPVisualizer(threading.Thread):
 
         self.widget.execute_event_lock.release()
 
-    def add_gird(self, size=None, color=None, antialias=True, glOptions='translucent'):
+    def add_grid(self, size=None, color=None, antialias=True, glOptions='translucent'):
         param = {
             'size': size,
             'color': color,
