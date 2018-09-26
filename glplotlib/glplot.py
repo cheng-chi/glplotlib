@@ -1,38 +1,33 @@
 from pyqtgraph.Qt import QtCore, QtGui
 import pyqtgraph.opengl as gl
+from pyqtgraph.opengl import MeshData
 import numpy as np
 import threading
-import uuid
 
 
 class GPGLViewWidget(gl.GLViewWidget, QtCore.QObject):
     exit_signal = QtCore.pyqtSignal()
-
     show_signal = QtCore.pyqtSignal()
-    remove_item_signal = QtCore.pyqtSignal(object)
     clear_signal = QtCore.pyqtSignal()
     add_item_delegate_signal = QtCore.pyqtSignal(object, object)
     remove_item_delegate_signal = QtCore.pyqtSignal(object)
+    method_delegate_signal = QtCore.pyqtSignal(object, object)
 
     def __init__(self, parent=None):
         super(GPGLViewWidget, self).__init__(parent=parent)
-        self.plot_items = dict()
         self.execute_event_lock = threading.Lock()
         self.execute_event = threading.Event()
         self.execute_result = None
+        self.real_close = False
 
         self.show_signal.connect(self.show_slot)
-        self.remove_item_signal.connect(self.remove_item_slot)
         self.clear_signal.connect(self.clear_slot)
         self.add_item_delegate_signal.connect(self.add_item_delegate_slot)
         self.remove_item_delegate_signal.connect(self.remove_item_delegate_slot)
-
-        self.exit_signal.connect(self.kill)
-        self.real_close = False
+        self.method_delegate_signal.connect(self.method_delegate_slot)
+        self.exit_signal.connect(self.exit_slot)
 
     def closeEvent(self, event):
-        print('close clicked!')
-        print(event)
         if not self.real_close:
             event.ignore()
             self.hide()
@@ -42,11 +37,6 @@ class GPGLViewWidget(gl.GLViewWidget, QtCore.QObject):
     @QtCore.pyqtSlot()
     def show_slot(self):
         self.show()
-
-    @QtCore.pyqtSlot(object)
-    def remove_item_slot(self, item_id):
-        item = self.plot_items[item_id]
-        self.removeItem(item)
 
     @QtCore.pyqtSlot()
     def clear_slot(self):
@@ -65,27 +55,17 @@ class GPGLViewWidget(gl.GLViewWidget, QtCore.QObject):
         self.removeItem(item)
         self.execute_event.set()
 
+    @QtCore.pyqtSlot(object, object)
+    def method_delegate_slot(self, name, params):
+        method = getattr(self, name)
+        self.execute_result = method(**params)
+        self.execute_event.set()
+
     @QtCore.pyqtSlot()
-    def kill(self):
+    def exit_slot(self):
         print('kill')
         self.real_close = True
         self.close()
-
-    @QtCore.pyqtSlot(str)
-    def print(self, text):
-        print(text)
-        self.show()
-
-    @QtCore.pyqtSlot(object, object, object, object)
-    def add_pcloud(self, item_id, pcloud, color, size):
-        print(pcloud)
-        pos = pcloud
-        if len(pcloud.shape) == 3:
-            pos = pcloud.reshape((pcloud.shape[0] * pcloud.shape[1], pcloud.shape[2]))
-        sp = gl.GLScatterPlotItem(pos=pos, size=size, color=color, pxMode=True)
-        sp.setGLOptions('opaque')
-        self.addItem(sp)
-        self.plot_items[item_id] = sp
 
 
 class GPVisualizer(threading.Thread):
@@ -108,37 +88,17 @@ class GPVisualizer(threading.Thread):
         self.running.set()
         self.app.exec()
         self.running.clear()
-        GPVisualizer.app.exit()
-        GPVisualizer.app = None
-        print('app_exited')
 
     def show(self):
         self.running.wait()
         self.widget.show_signal.emit()
 
-    def remove_item(self, item_id):
-        self.widget.remove_item_signal.emit(item_id)
-
     def clear(self):
+        self.running.wait()
         self.widget.clear_signal.emit()
 
-    def add_gird(self, size=None, color=None, antialias=True, glOptions='translucent'):
-        self.widget.execute_event_lock.acquire()
-        self.widget.execute_event.clear()
-
-        item_id = uuid.uuid4().hex
-        self.widget.add_grid_signal.emit(item_id, size, color, antialias, glOptions)
-
-        self.widget.execute_event.wait()
-        self.widget.execute_event_lock.release()
-        return item_id
-
-    def add_point_cloud(self, pcloud, color, size):
-        item_id = uuid.uuid4().hex
-        self.widget.add_pcloud_signal.emit(item_id, pcloud, color, size)
-        return item_id
-
     def add_item_delegate(self, func, params):
+        self.running.wait()
         self.widget.execute_event_lock.acquire()
         self.widget.execute_event.clear()
 
@@ -150,7 +110,23 @@ class GPVisualizer(threading.Thread):
         self.widget.execute_event_lock.release()
         return result
 
-    def remove_item_delegate(self, item):
+    def method_delegate(self, name, params=None):
+        self.running.wait()
+        self.widget.execute_event_lock.acquire()
+        self.widget.execute_event.clear()
+
+        if params is None:
+            params = dict()
+        self.widget.method_delegate_signal.emit(name, params)
+        self.widget.execute_event.wait()
+
+        result = self.widget.execute_result
+        self.widget.execute_result = None
+        self.widget.execute_event_lock.release()
+        return result
+
+    def remove_item(self, item):
+        self.running.wait()
         self.widget.execute_event_lock.acquire()
         self.widget.execute_event.clear()
 
@@ -159,12 +135,63 @@ class GPVisualizer(threading.Thread):
 
         self.widget.execute_event_lock.release()
 
+    def add_gird(self, size=None, color=None, antialias=True, glOptions='translucent'):
+        param = {
+            'size': size,
+            'color': color,
+            'antialias': antialias,
+            'glOptions': glOptions
+        }
+        item = self.add_item_delegate(gl.GLGridItem, param)
+        return item
+
+    def add_scatter(self, pos, color=(1, 1, 1, 1), size=1.5, pxMode=True):
+        param = {
+            'pos': pos,
+            'color': color,
+            'size': size,
+            'pxMode': pxMode
+        }
+        item = self.add_item_delegate(gl.GLScatterPlotItem, param)
+        return item
+
+    def add_mesh(self,
+                 meshdata,
+                 faceColor=(1, 1, 1, 1),
+                 edgeColor=(1, 1, 1, 1),
+                 drawEdges=False,
+                 drawFaces=True,
+                 shader=None,
+                 smooth=False,
+                 computeNormals=True):
+        param = {
+            'meshdata': meshdata,
+            'color': faceColor,
+            'edgeColor': edgeColor,
+            'drawEdges': drawEdges,
+            'drawFaces': drawFaces,
+            'shader': shader,
+            'smooth': smooth,
+            'computeNormals': computeNormals
+        }
+        item = self.add_item_delegate(gl.GLMeshItem, param)
+        return item
+
+    def add_line(self, pos, color=(1, 1, 1, 1), width=0.1, antialias=True, mode='line_strip'):
+        param = {
+            'pos': pos,
+            'color': color,
+            'width': width,
+            'antialias': antialias,
+            'mode': mode
+        }
+        item = self.add_item_delegate(gl.GLLinePlotItem, param)
+        return item
+
 
 def test():
     vis = GPVisualizer()
-    # vis.add_gird()
-    param = dict()
-    item = vis.add_item_delegate(gl.GLGridItem, param)
-    vis.show()
-    vis.remove_item_delegate(item)
+    item = vis.add_gird()
+    item = vis.add_scatter(np.eye(3))
+    vis.remove_item(item)
     # result = vis.add_pcloud(np.eye(3), (1,1,1,1), 1)
