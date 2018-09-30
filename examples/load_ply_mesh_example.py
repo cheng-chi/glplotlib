@@ -1,3 +1,4 @@
+import sys
 from os.path import join
 import numpy as np
 import trimesh
@@ -17,7 +18,9 @@ def load_mesh(path):
 
 
 def main():
-    path = '/home/chicheng/ARMLab/data/VolumeDeformData/hoodie/canonical/frame-000000.canonical.ply'
+    path = sys.argv[-1]
+    print('Loading file: {}'.format(path))
+    # path = u'/home/chicheng/ARMLab/data/VolumeDeformData/hoodie/canonical/frame-000000.canonical.ply'
     meshdata = MeshData(**load_mesh(path))
     vis.add_grid_generic()
     vis.add_mesh_generic(meshdata)
