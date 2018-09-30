@@ -1,6 +1,5 @@
 from pyqtgraph.Qt import QtCore, QtGui
 import pyqtgraph.opengl as gl
-from pyqtgraph.opengl import MeshData
 import numpy as np
 import threading
 
