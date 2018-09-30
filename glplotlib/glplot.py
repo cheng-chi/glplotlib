@@ -6,10 +6,8 @@ import threading
 
 class GPGLViewWidget(gl.GLViewWidget, QtCore.QObject):
     exit_signal = QtCore.pyqtSignal()
-    show_signal = QtCore.pyqtSignal()
     clear_signal = QtCore.pyqtSignal()
     add_item_delegate_signal = QtCore.pyqtSignal(object, object)
-    remove_item_delegate_signal = QtCore.pyqtSignal(object)
     method_delegate_signal = QtCore.pyqtSignal(object, object)
 
     def __init__(self, parent=None):
@@ -19,10 +17,8 @@ class GPGLViewWidget(gl.GLViewWidget, QtCore.QObject):
         self.execute_result = None
         self.real_close = False
 
-        self.show_signal.connect(self.show_slot)
         self.clear_signal.connect(self.clear_slot)
         self.add_item_delegate_signal.connect(self.add_item_delegate_slot)
-        self.remove_item_delegate_signal.connect(self.remove_item_delegate_slot)
         self.method_delegate_signal.connect(self.method_delegate_slot)
         self.exit_signal.connect(self.exit_slot)
 
@@ -34,30 +30,31 @@ class GPGLViewWidget(gl.GLViewWidget, QtCore.QObject):
             super(GPGLViewWidget, self).closeEvent(event)
 
     @QtCore.pyqtSlot()
-    def show_slot(self):
-        self.show()
-
-    @QtCore.pyqtSlot()
     def clear_slot(self):
         self.items = []
         self.update()
 
     @QtCore.pyqtSlot(object, object)
     def add_item_delegate_slot(self, func, params):
-        item = func(**params)
-        self.addItem(item)
-        self.execute_result = item
-        self.execute_event.set()
-
-    @QtCore.pyqtSlot(object)
-    def remove_item_delegate_slot(self, item):
-        self.removeItem(item)
+        try:
+            item = func(**params)
+            self.addItem(item)
+            self.execute_result = item
+        except Exception as error:
+            self.execute_result = error
         self.execute_event.set()
 
     @QtCore.pyqtSlot(object, object)
     def method_delegate_slot(self, name, params):
-        method = getattr(self, name)
-        self.execute_result = method(**params)
+        try:
+            method = getattr(self, name)
+            if type(params) is dict:
+                self.execute_result = method(**params)
+            else:
+                iterator = iter(params)
+                self.execute_result = method(*iterator)
+        except Exception as error:
+            self.execute_result = error
         self.execute_event.set()
 
     @QtCore.pyqtSlot()
@@ -72,6 +69,7 @@ class GPVisualizer(threading.Thread):
 
     def __init__(self):
         super(GPVisualizer, self).__init__()
+        self.widget = None
         self.running = threading.Event()
         self.start()
         self.running.wait()
@@ -81,20 +79,12 @@ class GPVisualizer(threading.Thread):
             GPVisualizer.app = QtGui.QApplication([])
 
         self.widget = GPGLViewWidget()
-        self.widget.opts['distance'] = 20
-        self.widget.setWindowTitle('default')
+        self.widget.opts['distance'] = 10
+        self.widget.setWindowTitle('default title')
 
         self.running.set()
         self.app.exec()
         self.running.clear()
-
-    def show(self):
-        self.running.wait()
-        self.widget.show_signal.emit()
-
-    def clear(self):
-        self.running.wait()
-        self.widget.clear_signal.emit()
 
     def add_item_delegate(self, func, params):
         self.running.wait()
@@ -107,6 +97,9 @@ class GPVisualizer(threading.Thread):
         result = self.widget.execute_result
         self.widget.execute_result = None
         self.widget.execute_event_lock.release()
+
+        if type(result) is Exception:
+            raise result
         return result
 
     def method_delegate(self, name, params=None):
@@ -122,17 +115,36 @@ class GPVisualizer(threading.Thread):
         result = self.widget.execute_result
         self.widget.execute_result = None
         self.widget.execute_event_lock.release()
+
+        if type(result) is Exception:
+            raise result
         return result
 
-    def remove_item(self, item):
+    def show(self):
+        self.method_delegate('show', dict())
+
+    def update(self):
+        self.method_delegate('update', dict())
+
+    def set_opts(self, **kwargs):
+        self.widget.opts.update(kwargs)
+        self.update()
+
+    def set_title(self, title):
+        self.method_delegate('setWindowTitle', [title])
+
+    def clear(self):
         self.running.wait()
-        self.widget.execute_event_lock.acquire()
-        self.widget.execute_event.clear()
+        self.widget.clear_signal.emit()
 
-        self.widget.remove_item_delegate_signal.emit(item)
-        self.widget.execute_event.wait()
+    def get_widget(self):
+        return self.widget
 
-        self.widget.execute_event_lock.release()
+    def remove_item(self, item):
+        param = {
+            'item': item
+        }
+        self.method_delegate('removeItem', param)
 
     def add_grid_generic(self, size=None, color=None, antialias=True, glOptions='translucent'):
         param = {
