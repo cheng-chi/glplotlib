@@ -66,7 +66,6 @@ def generate_animation(vis):
         phase -= 0.1
 
         ## update surface positions and colors
-        global sp3, d3, pos3
         z = -np.cos(d3 * 2 + phase)
         pos3[:, 2] = z
         color = np.empty((len(d3), 4), dtype=np.float32)
