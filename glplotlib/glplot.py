@@ -135,7 +135,7 @@ class GPVisualizer(threading.Thread):
 
         self.widget.execute_event_lock.release()
 
-    def add_grid(self, size=None, color=None, antialias=True, glOptions='translucent'):
+    def add_grid_generic(self, size=None, color=None, antialias=True, glOptions='translucent'):
         param = {
             'size': size,
             'color': color,
@@ -145,7 +145,7 @@ class GPVisualizer(threading.Thread):
         item = self.add_item_delegate(gl.GLGridItem, param)
         return item
 
-    def add_scatter(self, pos, color=(1, 1, 1, 1), size=1.5, pxMode=True):
+    def add_scatter_generic(self, pos, color=(1, 1, 1, 1), size=1.5, pxMode=True):
         param = {
             'pos': pos,
             'color': color,
@@ -155,15 +155,15 @@ class GPVisualizer(threading.Thread):
         item = self.add_item_delegate(gl.GLScatterPlotItem, param)
         return item
 
-    def add_mesh(self,
-                 meshdata,
-                 faceColor=(1, 1, 1, 1),
-                 edgeColor=(1, 1, 1, 1),
-                 drawEdges=False,
-                 drawFaces=True,
-                 shader=None,
-                 smooth=False,
-                 computeNormals=True):
+    def add_mesh_generic(self,
+                         meshdata,
+                         faceColor=(1, 1, 1, 1),
+                         edgeColor=(1, 1, 1, 1),
+                         drawEdges=False,
+                         drawFaces=True,
+                         shader=None,
+                         smooth=False,
+                         computeNormals=True):
         param = {
             'meshdata': meshdata,
             'color': faceColor,
@@ -177,7 +177,7 @@ class GPVisualizer(threading.Thread):
         item = self.add_item_delegate(gl.GLMeshItem, param)
         return item
 
-    def add_line(self, pos, color=(1, 1, 1, 1), width=0.1, antialias=True, mode='line_strip'):
+    def add_line_generic(self, pos, color=(1, 1, 1, 1), width=0.1, antialias=True, mode='line_strip'):
         param = {
             'pos': pos,
             'color': color,
@@ -188,10 +188,19 @@ class GPVisualizer(threading.Thread):
         item = self.add_item_delegate(gl.GLLinePlotItem, param)
         return item
 
+    def add_axis_generic(self, size=None, antialias=True, glOptions='translucent'):
+        param = {
+            'size': size,
+            'antialias': antialias,
+            'glOptions': glOptions
+        }
+        item = self.add_item_delegate(gl.GLAxisItem, param)
+        return item
+
 
 def test():
     vis = GPVisualizer()
-    item = vis.add_gird()
-    item = vis.add_scatter(np.eye(3))
+    item = vis.add_grid_generic()
+    item = vis.add_scatter_generic(np.eye(3))
     vis.remove_item(item)
     # result = vis.add_pcloud(np.eye(3), (1,1,1,1), 1)
