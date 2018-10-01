@@ -1,10 +1,9 @@
 import sys
-from os.path import join
+import time
 import numpy as np
 import trimesh
-from glplotlib import GPVisualizer, MeshData
-
-vis = GPVisualizer()
+import glplotlib.glplot as plt
+from glplotlib import MeshData
 
 
 def load_mesh(path):
@@ -22,9 +21,11 @@ def main():
     print('Loading file: {}'.format(path))
     # path = u'/home/chicheng/ARMLab/data/VolumeDeformData/hoodie/canonical/frame-000000.canonical.ply'
     meshdata = MeshData(**load_mesh(path))
-    vis.add_grid_generic()
-    vis.add_mesh_generic(meshdata)
-    vis.show()
+    plt.grid_generic()
+    plt.mesh_generic(meshdata)
+    plt.show()
+    time.sleep(30)
+    plt.close_app()
 
 
 if __name__ == '__main__':

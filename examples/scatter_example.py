@@ -1,8 +1,6 @@
 import time
 import numpy as np
-from glplotlib import GPVisualizer
-
-vis = GPVisualizer()
+import glplotlib.glplot as plt
 
 
 def generate_real_size_points():
@@ -37,7 +35,7 @@ def generate_real_size_points():
     return params
 
 
-def generate_animation(vis):
+def generate_animation():
     pos = np.random.random(size=(100000, 3))
     pos *= [10, -10, 10]
     pos[0] = (0, 0, 0)
@@ -51,10 +49,10 @@ def generate_animation(vis):
     pos3 = pos3.reshape(10000, 3)
     d3 = (pos3 ** 2).sum(axis=1) ** 0.5
 
-    sp2 = vis.add_scatter_generic(pos=pos, color=(1,1,1,1), size=size)
-    sp3 = vis.add_scatter_generic(pos=pos3, color=(1,1,1,.3), size=0.1, pxMode=False)
+    sp2 = plt.scatter_generic(pos=pos, color=(1,1,1,1), size=size)
+    sp3 = plt.scatter_generic(pos=pos3, color=(1,1,1,.3), size=0.1, pxMode=False)
 
-    for i in range(10000):
+    for i in range(5000):
         ## update volume colors
         s = -np.cos(d2 * 2 + phase)
         color = np.empty((len(d2), 4), dtype=np.float32)
@@ -79,11 +77,12 @@ def generate_animation(vis):
 
 
 def main():
-    vis.add_grid_generic()
-    vis.show()
-    vis.add_scatter_generic(**generate_real_size_points())
+    plt.grid_generic()
+    plt.show()
+    plt.scatter_generic(**generate_real_size_points())
 
-    generate_animation(vis)
+    generate_animation()
+    plt.close_app()
 
 
 if __name__ == '__main__':

@@ -5,12 +5,21 @@ import threading
 
 
 class GPGLViewWidget(gl.GLViewWidget, QtCore.QObject):
+    """
+    A class derived from gl.GLViewWidget.
+
+    Extended with QObject with multiple signals and slots. Expected to be run in a separate thread.
+    """
     exit_signal = QtCore.pyqtSignal()
     clear_signal = QtCore.pyqtSignal()
     add_item_delegate_signal = QtCore.pyqtSignal(object, object)
     method_delegate_signal = QtCore.pyqtSignal(object, object)
 
     def __init__(self, parent=None):
+        """
+        Same as GLViewWidget.
+        :param parent: parent of this Qt Object.
+        """
         super(GPGLViewWidget, self).__init__(parent=parent)
         self.execute_event_lock = threading.Lock()
         self.execute_event = threading.Event()
@@ -23,6 +32,13 @@ class GPGLViewWidget(gl.GLViewWidget, QtCore.QObject):
         self.exit_signal.connect(self.exit_slot)
 
     def closeEvent(self, event):
+        """
+        Overrides the existing behavior of closing a view window.
+
+        Now, closing window does not terminates the app.
+        :param event:
+        :return:
+        """
         if not self.real_close:
             event.ignore()
             self.hide()
@@ -59,159 +75,199 @@ class GPGLViewWidget(gl.GLViewWidget, QtCore.QObject):
 
     @QtCore.pyqtSlot()
     def exit_slot(self):
-        print('kill')
         self.real_close = True
         self.close()
 
 
 class GPVisualizer(threading.Thread):
     app = None
+    widget = None
+    running = threading.Event()
 
     def __init__(self):
         super(GPVisualizer, self).__init__()
-        self.widget = None
-        self.running = threading.Event()
-        self.start()
-        self.running.wait()
+        if not GPVisualizer.running.is_set():
+            self.start()
+            GPVisualizer.running.wait()
+
+    def __del__(self):
+        self.clean_up()
 
     def run(self):
-        if GPVisualizer.app is None:
-            GPVisualizer.app = QtGui.QApplication([])
+        GPVisualizer.app = QtGui.QApplication([])
 
-        self.widget = GPGLViewWidget()
-        self.widget.opts['distance'] = 10
-        self.widget.setWindowTitle('default title')
+        GPVisualizer.widget = GPGLViewWidget()
+        GPVisualizer.widget.opts['distance'] = 10
+        GPVisualizer.widget.setWindowTitle('default title')
 
-        self.running.set()
-        self.app.exec()
-        self.running.clear()
+        GPVisualizer.running.set()
+        GPVisualizer.app.exec()
+        GPVisualizer.running.clear()
 
-    def add_item_delegate(self, func, params):
-        self.running.wait()
-        self.widget.execute_event_lock.acquire()
-        self.widget.execute_event.clear()
+    @classmethod
+    def clean_up(cls):
+        if cls.widget is not None:
+            cls.widget.exit_signal.emit()
+            cls.widget = None
+        cls.app = None
+        cls.running.clear()
 
-        self.widget.add_item_delegate_signal.emit(func, params)
-        self.widget.execute_event.wait()
+    @classmethod
+    def add_item_delegate(cls, func, params):
+        cls.running.wait()
+        cls.widget.execute_event_lock.acquire()
+        cls.widget.execute_event.clear()
 
-        result = self.widget.execute_result
-        self.widget.execute_result = None
-        self.widget.execute_event_lock.release()
+        cls.widget.add_item_delegate_signal.emit(func, params)
+        cls.widget.execute_event.wait()
+
+        result = cls.widget.execute_result
+        cls.widget.execute_result = None
+        cls.widget.execute_event_lock.release()
 
         if type(result) is Exception:
             raise result
         return result
 
-    def method_delegate(self, name, params=None):
-        self.running.wait()
-        self.widget.execute_event_lock.acquire()
-        self.widget.execute_event.clear()
+    @classmethod
+    def method_delegate(cls, name, params=None):
+        cls.running.wait()
+        cls.widget.execute_event_lock.acquire()
+        cls.widget.execute_event.clear()
 
         if params is None:
             params = dict()
-        self.widget.method_delegate_signal.emit(name, params)
-        self.widget.execute_event.wait()
 
-        result = self.widget.execute_result
-        self.widget.execute_result = None
-        self.widget.execute_event_lock.release()
+        cls.widget.method_delegate_signal.emit(name, params)
+        cls.widget.execute_event.wait()
+
+        result = cls.widget.execute_result
+        cls.widget.execute_result = None
+        cls.widget.execute_event_lock.release()
 
         if type(result) is Exception:
             raise result
         return result
 
-    def show(self):
-        self.method_delegate('show', dict())
+    @classmethod
+    def clear(cls):
+        cls.running.wait()
+        cls.widget.clear_signal.emit()
 
-    def update(self):
-        self.method_delegate('update', dict())
-
-    def set_opts(self, **kwargs):
-        self.widget.opts.update(kwargs)
-        self.update()
-
-    def set_title(self, title):
-        self.method_delegate('setWindowTitle', [title])
-
-    def clear(self):
-        self.running.wait()
-        self.widget.clear_signal.emit()
-
-    def get_widget(self):
-        return self.widget
-
-    def remove_item(self, item):
-        param = {
-            'item': item
-        }
-        self.method_delegate('removeItem', param)
-
-    def add_grid_generic(self, size=None, color=None, antialias=True, glOptions='translucent'):
-        param = {
-            'size': size,
-            'color': color,
-            'antialias': antialias,
-            'glOptions': glOptions
-        }
-        item = self.add_item_delegate(gl.GLGridItem, param)
-        return item
-
-    def add_scatter_generic(self, pos, color=(1, 1, 1, 1), size=1.5, pxMode=True):
-        param = {
-            'pos': pos,
-            'color': color,
-            'size': size,
-            'pxMode': pxMode
-        }
-        item = self.add_item_delegate(gl.GLScatterPlotItem, param)
-        return item
-
-    def add_mesh_generic(self,
-                         meshdata,
-                         faceColor=(1, 1, 1, 1),
-                         edgeColor=(1, 1, 1, 1),
-                         drawEdges=False,
-                         drawFaces=True,
-                         shader=None,
-                         smooth=False,
-                         computeNormals=True):
-        param = {
-            'meshdata': meshdata,
-            'color': faceColor,
-            'edgeColor': edgeColor,
-            'drawEdges': drawEdges,
-            'drawFaces': drawFaces,
-            'shader': shader,
-            'smooth': smooth,
-            'computeNormals': computeNormals
-        }
-        item = self.add_item_delegate(gl.GLMeshItem, param)
-        return item
-
-    def add_line_generic(self, pos, color=(1, 1, 1, 1), width=0.1, antialias=True, mode='line_strip'):
-        param = {
-            'pos': pos,
-            'color': color,
-            'width': width,
-            'antialias': antialias,
-            'mode': mode
-        }
-        item = self.add_item_delegate(gl.GLLinePlotItem, param)
-        return item
-
-    def add_axis_generic(self, size=None, antialias=True, glOptions='translucent'):
-        param = {
-            'size': size,
-            'antialias': antialias,
-            'glOptions': glOptions
-        }
-        item = self.add_item_delegate(gl.GLAxisItem, param)
-        return item
+    @classmethod
+    def get_widget(cls):
+        return cls.widget
 
 
-def test():
-    vis = GPVisualizer()
-    item = vis.add_grid_generic()
-    item = vis.add_scatter_generic(np.eye(3))
-    vis.remove_item(item)
-    # result = vis.add_pcloud(np.eye(3), (1,1,1,1), 1)
+GLPLOT_VISUALIZER_INSTANCE = GPVisualizer()
+
+
+def show():
+    vis = GLPLOT_VISUALIZER_INSTANCE
+    vis.method_delegate('show')
+
+
+def hide():
+    vis = GLPLOT_VISUALIZER_INSTANCE
+    vis.method_delegate('hide')
+
+
+def close_app():
+    global GLPLOT_VISUALIZER_INSTANCE
+    GLPLOT_VISUALIZER_INSTANCE.clean_up()
+    GLPLOT_VISUALIZER_INSTANCE = None
+
+
+def update():
+    vis = GLPLOT_VISUALIZER_INSTANCE
+    vis.method_delegate('update')
+
+
+def set_opts(**kwargs):
+    vis = GLPLOT_VISUALIZER_INSTANCE
+    vis.widget.opts.update(kwargs)
+    update()
+
+
+def set_title(title):
+    vis = GLPLOT_VISUALIZER_INSTANCE
+    vis.method_delegate('setWindowTitle', [title])
+
+
+def remove_item(item):
+    vis = GLPLOT_VISUALIZER_INSTANCE
+    param = {
+        'item': item
+    }
+    vis.method_delegate('removeItem', param)
+
+
+def grid_generic(size=None, color=None, antialias=True, glOptions='translucent'):
+    vis = GLPLOT_VISUALIZER_INSTANCE
+    param = {
+        'size': size,
+        'color': color,
+        'antialias': antialias,
+        'glOptions': glOptions
+    }
+    item = vis.add_item_delegate(gl.GLGridItem, param)
+    return item
+
+
+def scatter_generic(pos, color=(1, 1, 1, 1), size=1.5, pxMode=True):
+    vis = GLPLOT_VISUALIZER_INSTANCE
+    param = {
+        'pos': pos,
+        'color': color,
+        'size': size,
+        'pxMode': pxMode
+    }
+    item = vis.add_item_delegate(gl.GLScatterPlotItem, param)
+    return item
+
+
+def mesh_generic(meshdata,
+                     faceColor=(1, 1, 1, 1),
+                     edgeColor=(1, 1, 1, 1),
+                     drawEdges=False,
+                     drawFaces=True,
+                     shader=None,
+                     smooth=False,
+                     computeNormals=True):
+    vis = GLPLOT_VISUALIZER_INSTANCE
+    param = {
+        'meshdata': meshdata,
+        'color': faceColor,
+        'edgeColor': edgeColor,
+        'drawEdges': drawEdges,
+        'drawFaces': drawFaces,
+        'shader': shader,
+        'smooth': smooth,
+        'computeNormals': computeNormals
+    }
+    item = vis.add_item_delegate(gl.GLMeshItem, param)
+    return item
+
+
+def line_generic(pos, color=(1, 1, 1, 1), width=0.1, antialias=True, mode='line_strip'):
+    vis = GLPLOT_VISUALIZER_INSTANCE
+    param = {
+        'pos': pos,
+        'color': color,
+        'width': width,
+        'antialias': antialias,
+        'mode': mode
+    }
+    item = vis.add_item_delegate(gl.GLLinePlotItem, param)
+    return item
+
+
+def axis_generic(size=None, antialias=True, glOptions='translucent'):
+    vis = GLPLOT_VISUALIZER_INSTANCE
+    param = {
+        'size': size,
+        'antialias': antialias,
+        'glOptions': glOptions
+    }
+    item = vis.add_item_delegate(gl.GLAxisItem, param)
+    return item
