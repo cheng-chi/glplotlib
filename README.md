@@ -16,3 +16,8 @@ Requirements
   * NumPy
   * For 3D graphics: pyopengl
   * Known to run on Linux. It will NOT run on MacOS, due to its limitations.
+
+Installation
+-------------
+
+`pip install glplotlib`
