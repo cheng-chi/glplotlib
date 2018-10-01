@@ -78,6 +78,10 @@ class GPGLViewWidget(gl.GLViewWidget, QtCore.QObject):
         self.real_close = True
         self.close()
 
+    def show_delegate(self, persistent=True):
+        self.real_close = not persistent
+        self.show()
+
 
 class GPVisualizer(threading.Thread):
     app = None
@@ -91,7 +95,8 @@ class GPVisualizer(threading.Thread):
             GPVisualizer.running.wait()
 
     def __del__(self):
-        self.clean_up()
+        if GPVisualizer.running.is_set():
+            self.clean_up()
 
     def run(self):
         GPVisualizer.app = QtGui.QApplication([])
@@ -162,9 +167,12 @@ class GPVisualizer(threading.Thread):
 GLPLOT_VISUALIZER_INSTANCE = GPVisualizer()
 
 
-def show():
+def show(persistent=True):
     vis = GLPLOT_VISUALIZER_INSTANCE
-    vis.method_delegate('show')
+    param = {
+        'persistent': persistent
+    }
+    vis.method_delegate('show_delegate', param)
 
 
 def hide():
@@ -176,6 +184,10 @@ def close_app():
     global GLPLOT_VISUALIZER_INSTANCE
     GLPLOT_VISUALIZER_INSTANCE.clean_up()
     GLPLOT_VISUALIZER_INSTANCE = None
+
+
+def is_alive():
+    return GPVisualizer.running.is_set()
 
 
 def update():
