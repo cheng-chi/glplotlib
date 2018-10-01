@@ -21,3 +21,8 @@ Installation
 -------------
 
 `pip install glplotlib`
+
+Usage
+-----
+
+See examples folder.
