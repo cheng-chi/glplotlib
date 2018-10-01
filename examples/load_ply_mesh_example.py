@@ -23,9 +23,9 @@ def main():
     meshdata = MeshData(**load_mesh(path))
     plt.grid_generic()
     plt.mesh_generic(meshdata)
-    plt.show()
-    time.sleep(30)
-    plt.close_app()
+    plt.show(persistent=False)
+    # time.sleep(30)
+    # plt.close_app()
 
 
 if __name__ == '__main__':

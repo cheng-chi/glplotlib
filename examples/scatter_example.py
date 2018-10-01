@@ -52,7 +52,7 @@ def generate_animation():
     sp2 = plt.scatter_generic(pos=pos, color=(1,1,1,1), size=size)
     sp3 = plt.scatter_generic(pos=pos3, color=(1,1,1,.3), size=0.1, pxMode=False)
 
-    for i in range(5000):
+    while plt.is_alive():
         ## update volume colors
         s = -np.cos(d2 * 2 + phase)
         color = np.empty((len(d2), 4), dtype=np.float32)
@@ -78,7 +78,7 @@ def generate_animation():
 
 def main():
     plt.grid_generic()
-    plt.show()
+    plt.show(persistent=False)
     plt.scatter_generic(**generate_real_size_points())
 
     generate_animation()

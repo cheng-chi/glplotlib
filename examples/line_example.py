@@ -32,11 +32,11 @@ def add_lines():
 
 
 def main():
-    plt.show()
+    plt.show(persistent=False)
     add_grid()
     add_lines()
-    time.sleep(30)
-    plt.close_app()
+    # time.sleep(30)
+    # plt.close_app()
 
 
 if __name__ == '__main__':
