@@ -1,7 +1,7 @@
 GLPlotLib
 =========
 
-GLPlotLib is a thin rapper around [PyQtGraph](https://github.com/pyqtgraph/pyqtgraph) with Matplotlib style API.
+GLPlotLib is a thin wapper around [PyQtGraph](https://github.com/pyqtgraph/pyqtgraph) with Matplotlib style API.
 
 Copyright 2018 Cheng Chi, University of Michigan - Ann Arbor
 
