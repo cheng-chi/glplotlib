@@ -1,7 +1,7 @@
 from setuptools import setup
 
 DESCRIPTION = """
-GLPlotLib is a thin rapper around PyQtGraph with Matplotlib style API.
+GLPlotLib is a thin wrapper around PyQtGraph with Matplotlib style API.
 
 GLPlotLib launches 3D OpenGL visualizations of PyQtGraph in a separate thread, allowing 
 it to be used in a interactive python shell, without blocking the main thread.
@@ -10,7 +10,7 @@ it to be used in a interactive python shell, without blocking the main thread.
 
 setupOpts = dict(
     name='glplotlib',
-    description='a thin rapper around PyQtGraph with Matplotlib style API',
+    description='a thin wrapper around PyQtGraph with Matplotlib style API',
     long_description=DESCRIPTION,
     license='MIT',
     url='https://github.com/chichengumich/glplotlib',
