@@ -3,6 +3,8 @@ import pyqtgraph.opengl as gl
 import numpy as np
 import threading
 
+from glplotlib import utilites
+
 
 class GPGLViewWidget(gl.GLViewWidget, QtCore.QObject):
     """
@@ -535,3 +537,21 @@ def axis_generic(size=None, antialias=True, glOptions='translucent'):
     }
     item = vis.add_item_delegate(gl.GLAxisItem, param)
     return item
+
+
+def point_cloud(pos, color=(1, 1, 1, 1), size=1.5, pxMode=True):
+    if isinstance(pos, np.ndarray):
+        pos = utilites.reshape_vertex_map(pos)
+    if isinstance(color, np.ndarray):
+        color = utilites.normalize_colors(color)
+    item = scatter_generic(pos=pos, color=color, size=size, pxMode=pxMode)
+    item.setGLOptions('opaque')
+    return item
+
+
+def update_point_cloud(item, pos=None, color=None):
+    if isinstance(pos, np.ndarray):
+        pos = utilites.reshape_vertex_map(pos)
+    if isinstance(color, np.ndarray):
+        color = utilites.normalize_colors(color)
+    item.setData(pos=pos, color=color)
