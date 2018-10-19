@@ -25,4 +25,10 @@ Installation
 Usage
 -----
 
-See examples folder.
+```python
+import glplotlib.glplot as plt
+plt.show()
+plt.grid_generic()
+```
+
+More detailed usage see examples folder.
