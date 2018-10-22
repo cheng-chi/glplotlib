@@ -554,4 +554,25 @@ def update_point_cloud(item, pos=None, color=None):
         pos = utilites.reshape_vertex_map(pos)
     if isinstance(color, np.ndarray):
         color = utilites.normalize_colors(color)
-    item.setData(pos=pos, color=color)
+    if pos is not None and color is not None:
+        item.setData(pos=pos, color=color)
+    elif pos is not None:
+        item.setData(pos=pos)
+    elif color is not None:
+        item.setData(color=color)
+
+
+def edge_set(verts, edges, color=(1, 1, 1, 1), width=0.1):
+    lines = np.empty((len(edges) * 2, 3), dtype=verts.dtype)
+    lines[0::2] = verts[edges[:, 0]]
+    lines[1::2] = verts[edges[:, 1]]
+
+    item = line_generic(pos=lines, color=color, width=width, mode='line_strip')
+    return item
+
+
+def update_edge_set(item, verts, edges):
+    lines = np.empty((len(edges) * 2, 3), dtype=verts.dtype)
+    lines[0::2] = verts[edges[:, 0]]
+    lines[1::2] = verts[edges[:, 1]]
+    item.setData(pos=lines)
