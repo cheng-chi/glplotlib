@@ -592,7 +592,7 @@ def edge_set(verts, edges, color=(1, 1, 1, 1), width=0.1):
     lines[0::2] = verts[edges[:, 0]]
     lines[1::2] = verts[edges[:, 1]]
 
-    item = line_generic(pos=lines, color=color, width=width, mode='line_strip')
+    item = line_generic(pos=lines, color=color, width=width, mode='lines')
     return item
 
 
