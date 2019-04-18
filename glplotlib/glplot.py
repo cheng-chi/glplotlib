@@ -540,6 +540,15 @@ def axis_generic(size=None, antialias=True, glOptions='translucent'):
 
 
 def point_cloud(pos, color=(1, 1, 1, 1), size=1.5, pxMode=True):
+    """
+    A helper function around scatter_generic to better deal with
+    image shaped point cloud
+    :param pos: (H, W, 3) or (N, 3) shape of numpy array, representing 3D points
+    :param color: (H, W, 3) or (N, 3) shape of numpy array, representing RGB color
+    :param size: (N,) array of floats specifying spot sizes or a single value to apply to all spots.
+    :param pxMode: If True, spot sizes are expressed in pixels. Otherwise, they are expressed in item coordinates.
+    :return: pyqtgraph.opengl.GLScatterPlotItem, created in the same thread as GPGLViewWidget.
+    """
     if isinstance(pos, np.ndarray):
         pos = utilites.reshape_vertex_map(pos)
     if isinstance(color, np.ndarray):
@@ -550,6 +559,13 @@ def point_cloud(pos, color=(1, 1, 1, 1), size=1.5, pxMode=True):
 
 
 def update_point_cloud(item, pos=None, color=None):
+    """
+    Update data of a existing point_cloud object, can be used for animation.
+    :param item: pyqtgraph.opengl.GLScatterPlotItem
+    :param pos: (H, W, 3) or (N, 3) shape of numpy array, representing 3D points
+    :param color: (H, W, 3) or (N, 3) shape of numpy array, representing RGB color
+    :return:
+    """
     if isinstance(pos, np.ndarray):
         pos = utilites.reshape_vertex_map(pos)
     if isinstance(color, np.ndarray):
@@ -563,6 +579,15 @@ def update_point_cloud(item, pos=None, color=None):
 
 
 def edge_set(verts, edges, color=(1, 1, 1, 1), width=0.1):
+    """
+    A helper function for visualizing vertex-index list data structure
+    :param verts: (N, 3) numpy array, representing 3D points
+    :param edges: (E, 2) integer numpy array, each row represent index of two vertices of an edges
+    :param color: (2*N, 4) array of floats (0.0-1.0)
+    or tuple of floats specifying a single color for the entire item.
+    :param width: float specifying line width
+    :return: pyqtgraph.opengl.GLLinePlotItem, created in the same thread as GPGLViewWidget.
+    """
     lines = np.empty((len(edges) * 2, 3), dtype=verts.dtype)
     lines[0::2] = verts[edges[:, 0]]
     lines[1::2] = verts[edges[:, 1]]
@@ -572,6 +597,13 @@ def edge_set(verts, edges, color=(1, 1, 1, 1), width=0.1):
 
 
 def update_edge_set(item, verts, edges):
+    """
+    Update data of a existing edge_set object, can be used for animation
+    :param item: pyqtgraph.opengl.GLLinePlotItem
+    :param verts: (N, 3) numpy array, representing 3D points
+    :param edges: (E, 2) integer numpy array, each row represent index of two vertices of an edges
+    :return:
+    """
     lines = np.empty((len(edges) * 2, 3), dtype=verts.dtype)
     lines[0::2] = verts[edges[:, 0]]
     lines[1::2] = verts[edges[:, 1]]
